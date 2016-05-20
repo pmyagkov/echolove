@@ -22,13 +22,14 @@ wss.on('connection', function(ws) {
   clients[id] = ws;
   console.log('New connection coming', id);
 
-  ws.on('message', (evt) => {
+  ws.on('message', function (evt) {
     console.log('Incoming message from client', id, ' | ', evt);
 
-    let message = JSON.parse(evt.data);
+    var message = JSON.parse(evt);
     switch (message.command) {
       case 'play':
-        sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: url, initiator: id }}));
+        sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: message.data.url, initiator: id }}));
+
         break;
     }
   });
