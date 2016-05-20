@@ -61,7 +61,7 @@ app.post('/play', function (req, res) {
     return res.status(400).send('No `url` passed');
   }
 
-  sendMessageToClient(null, { url: url });
+  sendMessageToClient(null, JSON.stringify({ url: url }));
 
   /*
   var name = req.body.name;
