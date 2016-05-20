@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+
+  "name": "Smoothy",
+  "version": "0.0.1",
+  "description": "Smooth listening to music",
+  "background": {
+    "scripts": [
+      "js/background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://jira.mail.ru/*"
+      ],
+      "js": [
+        "js/content.js"
+      ]
+    }
+  ],
+  "page_action": {
+    "default_icon": {
+      "19": "img/icon19.png",
+      "38": "img/icon38.png"
+    },
+    "default_title": "JIRAbus"
+  },
+  "icons": {
+    "16": "img/icon16.png",
+    "32": "img/icon32.png",
+    "48": "img/icon48.png",
+    "128": "img/icon128.png"
+  },
+  "permissions" : [
+    "tabs",
+    "storage",
+    "https://jira.mail.ru/*",
+    "http://deardeerart.ru/*"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "bundles": [
+    {
+      "name": "background",
+      "content": [
+        {
+          "type": "js",
+          "entry": "./background/index.js"
+        }
+      ]
+    },
+    {
+      "name": "content",
+      "content": [
+        {
+          "type": "js",
+          "entry": "./content/index.js"
+        }
+      ]
+    }
+  ],
+  
+  "output_dir": {
+    "js": "static/js",
+    "css": "static/css"
+  }
+}
