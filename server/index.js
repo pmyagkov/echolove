@@ -18,19 +18,27 @@ var wss = new WebSocket.Server({
 });
 
 wss.on('connection', function(ws) {
-
   var id = clientIndex++;
   clients[id] = ws;
   console.log('New connection coming', id);
 
-  ws.on('message', function(message) {
-    console.log('Incoming message from client', id, ' | ', message);
+  ws.on('message', (evt) => {
+    console.log('Incoming message from client', id, ' | ', evt);
+
+    let message = JSON.parse(evt.data);
+    switch (message.command) {
+      case 'play':
+        sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: url, initiator: id }}));
+        break;
+    }
   });
 
   ws.on('close', function() {
     console.log('Connection closed', id);
     delete clients[id];
   });
+
+  ws.send(JSON.stringify({ type: 'greetings', data: { clientId: id }}));
 
 });
 
@@ -61,7 +69,9 @@ app.post('/play', function (req, res) {
     return res.status(400).send('No `url` passed');
   }
 
-  sendMessageToClient(null, JSON.stringify({ url: url }));
+  sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: url, initiator: null }}));
+
+  res.status(200).end();
 
   /*
   var name = req.body.name;

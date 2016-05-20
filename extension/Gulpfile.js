@@ -1,5 +1,7 @@
 'use strict';
 
+var process = require('process');
+
 var gulp = require('gulp');
 var concat = require('gulp-concat');
 var csso = require('gulp-csso');
@@ -43,47 +45,6 @@ function getCssBundles () {
 }
 
 /**
- * Возвращает список всех output CSS файлов
- */
-
-function getOutputCssFiles () {
-  return [
-    './static/css/inline.css'
-  ];
-}
-
-/**
- * Возвращает список всех output JS файлов
- */
-
-function getOutputJsFiles () {
-  return [
-    'static/js/background.js',
-    'static/js/content.js',
-    'static/js/inline.js'
-  ];
-}
-
-/**
- * Возвращает список всех output файлов
- */
-
-function getOutputFiles () {
-  return [
-    'static/css/cal.css',
-    'static/css/cal.min.css',
-    'static/js/cal.js',
-    'static/js/cal.min.js',
-    'static/js/libs.js',
-    'static/js/libs.min.js',
-    'static/css/tutorial.css',
-    'static/css/tutorial.min.css',
-    'static/js/tutorial.js',
-    'static/js/tutorial.min.js'
-  ];
-}
-
-/**
  * Сборка стилей
  */
 
@@ -103,7 +64,7 @@ gulp.task('build:css', function() {
  */
 
 gulp.task('build:js', function(cb) {
-  exec('./node_modules/.bin/webpack --config ./build/webpack.config.js --display-modules', function (err, stdout, stderr) {
+  exec('../node_modules/.bin/webpack --config ./build/webpack.config.js --display-modules', function (err, stdout, stderr) {
     // FIXME
     if (err === null && stdout.indexOf('ERROR') !== -1) {
       err = new Error(stdout);
@@ -112,51 +73,6 @@ gulp.task('build:js', function(cb) {
     console.log(stderr);
     cb(err);
   });
-});
-
-/**
- * Минификация Javascript файлов
- */
-
-gulp.task('minify:js', function () {
-  return gulp.src(getOutputJsFiles())
-    .pipe(uglify({
-      mangle: false,
-      preserveComments: 'license'
-    }))
-    .pipe(rename(function(path) {
-      path.basename = path.basename + '.min';
-    }))
-    .pipe(gulp.dest(outputDir.js));
-});
-
-/**
- * Минификация CSS файлов
- */
-
-gulp.task('minify:css', function () {
-  return gulp.src(getOutputCssFiles())
-    .pipe(csso({
-      restructure: false,
-      sourceMap: false,
-      debug: false
-    }))
-    .pipe(rename({
-      suffix: '.min'
-    }))
-    .pipe(gulp.dest(outputDir.css));
-});
-
-/**
- * Вывод репорта о размерах output файлов
- */
-
-gulp.task('report', function () {
-  return gulp.src(getOutputFiles())
-    .pipe(sizereport({
-      gzip: true,
-      total: false
-    }));
 });
 
 /**
@@ -173,7 +89,6 @@ gulp.task('watch:js', function() {
   gulp.watch([
     'background/*.js',
     'content/*.js',
-    'inline/*.js',
     'common/*.js'
   ], ['build:js']);
 });

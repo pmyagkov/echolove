@@ -10,8 +10,7 @@ module.exports = {
   },
   entry: {
     background: './background/index.js',
-    content: './content/index.js',
-    inline: './inline/index.js'
+    content: './content/index.js'
   },
   output: {
     path: path.resolve('static/js'),
