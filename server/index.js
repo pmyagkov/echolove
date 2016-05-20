@@ -11,6 +11,8 @@ var clientIndex = 0;
 var SOCKET_PORT = 8070;
 var APP_PORT = 8069;
 
+console.log('Creating ws server on port', SOCKET_PORT);
+
 var wss = new WebSocket.Server({
   port: SOCKET_PORT
 });
@@ -19,7 +21,7 @@ wss.on('connection', function(ws) {
 
   var id = clientIndex++;
   clients[id] = ws;
-  console.log('New connection', id);
+  console.log('New connection coming', id);
 
   ws.on('message', function(message) {
     console.log('Incoming message from client', id, ' | ', message);
@@ -35,13 +37,16 @@ wss.on('connection', function(ws) {
 
 function sendMessageToClient(id, message) {
   var cls;
+  var ids = [id];
   if (!id || !clients[id]) {
     cls = _.values(clients);
+    ids = _.keys(clients);
   } else {
     cls = [clients[id]];
   }
 
-  cls.forEach(function(client) {
+  cls.forEach(function (client) {
+    console.log('Sending message to clients', ids);
     client.send(message);
   });
 }
