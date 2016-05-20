@@ -28,7 +28,14 @@ wss.on('connection', function(ws) {
     var message = JSON.parse(evt);
     switch (message.command) {
       case 'play':
-        sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: message.data.url, initiator: id }}));
+        var url = message.data.url;
+        console.log('url', url);
+        if (/^https:\/\/soundcloud\.com\/.+\/.+/.test(url)) {
+          console.log('Url passed validation. Sending it to clients.');
+          sendMessageToClient(null, JSON.stringify({ type: 'play', data: { url: url, initiator: id }}));
+        } else {
+          console.log('Url DIDNT pass validation. Avoid.');
+        }
 
         break;
     }

@@ -34,15 +34,18 @@ class WSClient {
     let message = JSON.parse(evt.data);
 
     switch (message.type) {
-      case 'open':
+      case 'play':
         let initiator = message.data.initiator;
         if (initiator !== this._cliendId) {
+          console.log(`I'm about to open '${message.data.url}'`);
           chrome.tabs.create({ url: message.data.url });
+        } else {
+          console.log(`I'm the initiator of this click. Avoid it.`)
         }
         break;
 
       case 'greetings':
-        this._cliendId = message.data.cliendId;
+        this._cliendId = message.data.clientId;
         break;
     }
   }
@@ -60,6 +63,5 @@ class WSClient {
 let wsClient = new WSClient();
 
 chrome.browserAction.onClicked.addListener((tab) => {
-  debugger;
   wsClient.play(tab.url);
 });
