@@ -10,7 +10,7 @@ module.exports = {
   },
   entry: {
     background: './background/index.js',
-    content: './content/index.js'
+    'content-buttons': './content/buttons.js'
   },
   output: {
     path: path.resolve('static/js'),

@@ -1,6 +1,11 @@
 .idea
 .git
 
+.DS_Store
+**/.DS_Store
+
 node_modules
 
 extension/static
+
+npm-debug.log

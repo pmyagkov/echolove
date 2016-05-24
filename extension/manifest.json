@@ -12,10 +12,10 @@
   "content_scripts": [
     {
       "matches": [
-        "https://soundcloud.com/*/*"
+        "https://soundcloud.com/*"
       ],
       "js": [
-        "js/content.js"
+        "js/content-buttons.js"
       ]
     }
   ],
@@ -23,6 +23,7 @@
     "default_title": "Smoothy"
   },
   "permissions" : [
+    "activeTab",
     "tabs",
     "notifications",
     "https://soundcloud.com/*",

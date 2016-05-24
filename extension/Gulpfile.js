@@ -89,23 +89,41 @@ gulp.task('watch:js', function() {
   gulp.watch([
     'background/*.js',
     'content/*.js',
-    'common/*.js'
+    'common/*.js',
+    'popup/*.js'
   ], ['build:js']);
 });
 
-gulp.task('copy-assets', function () {
+gulp.task('watch:html', function () {
+  gulp.watch([
+    'popup/*.html'
+  ], ['copy:html']);
+});
+
+gulp.task('copy:html', function () {
+  return gulp.src(['popup/*.html'])
+    .pipe(gulp.dest('static'));
+});
+
+gulp.task('watch:manifest', function () {
+  gulp.watch([
+    'manifest.json'
+  ], ['copy:manifest']);
+});
+
+gulp.task('copy:assets', function () {
   return gulp.src(['img/*'])
     .pipe(gulp.dest('static/img'));
 });
 
-gulp.task('copy-manifest', function () {
+gulp.task('copy:manifest', function () {
   return gulp.src(['manifest.json', 'img'])
     .pipe(gulp.dest('static'));
 });
 
-gulp.task('copy', ['copy-manifest', 'copy-assets']);
+gulp.task('copy', ['copy:manifest', 'copy:assets', 'copy:html']);
 
-gulp.task('watch', ['watch:js', 'watch:css']);
+gulp.task('watch', ['watch:js', 'watch:css', 'watch:html', 'watch:manifest']);
 
 // Сборка ассетов
 gulp.task('build', ['build:js', 'build:css', 'copy']);

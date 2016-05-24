@@ -15,33 +15,45 @@ class WSClient {
   }
 
   _onOpen () {
-    console.log("Соединение установлено.");
+    console.log(`Connection established`);
   }
 
-  _onClose () {
+  _onClose (evt) {
     if (event.wasClean) {
-      console.log('Соединение закрыто чисто');
+      console.log(`Connection closed`);
     } else {
-      console.log('Обрыв соединения'); // например, "убит" процесс сервера
+      console.log(`Connection was interrupted`); // например, "убит" процесс сервера
     }
-    console.log('Код: ' + event.code + ' причина: ' + event.reason);
+    console.log(`Code: ${evt.code}, reason ${evt.reason}`);
 
     this._initConnection();
   }
 
   _onMessage (evt) {
-    console.log("Получены данные " + evt.data);
+    console.log(`Data received '${evt.data}'`);
     let message = JSON.parse(evt.data);
 
     switch (message.type) {
       case 'play':
-        let initiator = message.data.initiator;
+        const { url, initiator } = message.data;
+
         if (initiator !== this._cliendId) {
           console.log(`I'm about to open '${message.data.url}'`);
-          chrome.tabs.create({ url: message.data.url });
         } else {
-          console.log(`I'm the initiator of this click. Avoid it.`)
+          console.log(`I'm the initiator of this click.`)
         }
+
+        chrome.tabs.query({ url }, (results) => {
+          debugger;
+          if (!results.length) {
+            chrome.tabs.create({ url }, (tab) => {
+              //chrome.tabs.executeScript(tab.id,{file: "buy.js"});
+            });
+          } else {
+            chrome.tabs.update(results[0].id, { selected: true });
+          }
+        });
+
         break;
 
       case 'greetings':
@@ -51,17 +63,77 @@ class WSClient {
   }
 
   _onError (error) {
-    console.log("Ошибка " + error.message);
+    console.log(`Error '${error.message}'`);
   }
 
   play (url) {
-    this._socket.send(JSON.stringify({ command: 'play', data: { url } }));
+    const data = { command: 'play', data: { url } };
+
+    console.log('Sending WS play command', data);
+
+    this._socket.send(JSON.stringify(data));
   }
 
 }
 
+class BackgroundPage {
+  constructor (wsClient) {
+    this._wsClient = wsClient;
+    this._bindEvents();
+  }
+
+  _bindEvents () {
+    chrome.tabs.onUpdated.addListener(this._showPageAction.bind(this));
+
+    chrome.runtime.onMessage.addListener(this._onMessage.bind(this));
+
+    chrome.browserAction.onClicked.addListener(this._browserActionClick.bind(this));
+  }
+
+  _onMessage (request, sender, sendResponse) {
+    console.group('Background._onMessage');
+
+    console.log('Received message', sender.tab
+      ? 'from a content script:' + sender.tab.url
+      : 'from the extension'
+    );
+
+    console.log('request', request);
+    console.log('sender', sender);
+
+    console.log(`${request.command} command came`, request.data);
+
+    switch (request.command) {
+      /*case 'save':
+        this._getActiveTabUrl().then((url) => {
+          debugger;
+          wsClient.play(url);
+
+          sendResponse({ command: request.command, result: 'ok' });
+        });
+
+        console.groupEnd();
+        return true;*/
+
+      case 'play':
+        this._wsClient.play(request.data.url);
+
+        sendResponse({ command: request.command, result: 'ok' });
+
+        console.groupEnd();
+        return true;
+    }
+  }
+
+  _browserActionClick (tab) {
+    //this._wsClient.play(tab.url);
+  }
+
+  _showPageAction () {
+
+  }
+}
+
 let wsClient = new WSClient();
 
-chrome.browserAction.onClicked.addListener((tab) => {
-  wsClient.play(tab.url);
-});
+new BackgroundPage(wsClient);

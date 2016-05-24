@@ -10,11 +10,20 @@
       ]
     },
     {
-      "name": "content",
+      "name": "content-buttons",
       "content": [
         {
           "type": "js",
-          "entry": "./content/index.js"
+          "entry": "./content/buttons.js"
+        }
+      ]
+    },
+    {
+      "name": "popup",
+      "content": [
+        {
+          "type": "js",
+          "entry": "./popup/index.js"
         }
       ]
     }
