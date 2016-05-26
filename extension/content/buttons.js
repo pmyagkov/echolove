@@ -41,7 +41,6 @@ class ButtonsController {
   _createButtonsOnElem (elem) {
     console.log('Creating button on elem', elem);
 
-
     elem.dataset.sthy = true;
 
     let container = elem.querySelector('.sc-button-group');
@@ -96,13 +95,38 @@ class ButtonsController {
   }
 
   _sendCommand (command, data) {
+    if (!chrome.runtime) {
+      window.location.reload();
+    }
+
     chrome.runtime.sendMessage({ command, data }, (response) => {});
   }
+}
 
+class PageLifecycleChecked {
+  constructor () {
+    this._bindEvents();
+  }
+
+  _bindEvents () {
+    document.addEventListener('DOMContentLoaded', () => this._sendLifecycleEvent('content-loaded') );
+    window.onload = () => this._sendLifecycleEvent('window-loaded');
+  }
+
+  _sendLifecycleEvent (event) {
+    if (!chrome.runtime) {
+      window.location.reload();
+    }
+
+    console.log(`Lifecycle event '${event}'`);
+
+    chrome.runtime.sendMessage({ command: 'lifecycle', data: { event }});
+  }
 }
 
 console.log('CONTENT STARTED!!!');
 
 new ButtonsController;
+new PageLifecycleChecked;
 
 

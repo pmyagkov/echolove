@@ -1,85 +1,10 @@
-const SOCKET_URL = "ws://smoothy.puelle.me/ws";
-
-class WSClient {
-  constructor () {
-    this._initConnection();
-  }
-  
-  _initConnection () {
-    let socket = this._socket = new WebSocket(SOCKET_URL);
-
-    socket.onopen = (...args) => this._onOpen(...args);
-    socket.onclose = (...args) => this._onClose(...args);
-    socket.onmessage = (...args) => this._onMessage(...args);
-    socket.onerror = (...args) => this._onError(...args);
-  }
-
-  _onOpen () {
-    console.log(`Connection established`);
-  }
-
-  _onClose (evt) {
-    if (event.wasClean) {
-      console.log(`Connection closed`);
-    } else {
-      console.log(`Connection was interrupted`); // например, "убит" процесс сервера
-    }
-    console.log(`Code: ${evt.code}, reason ${evt.reason}`);
-
-    this._initConnection();
-  }
-
-  _onMessage (evt) {
-    console.log(`Data received '${evt.data}'`);
-    let message = JSON.parse(evt.data);
-
-    switch (message.type) {
-      case 'play':
-        const { url, initiator } = message.data;
-
-        if (initiator !== this._cliendId) {
-          console.log(`I'm about to open '${message.data.url}'`);
-        } else {
-          console.log(`I'm the initiator of this click.`)
-        }
-
-        chrome.tabs.query({ url }, (results) => {
-          debugger;
-          if (!results.length) {
-            chrome.tabs.create({ url }, (tab) => {
-              //chrome.tabs.executeScript(tab.id,{file: "buy.js"});
-            });
-          } else {
-            chrome.tabs.update(results[0].id, { selected: true });
-          }
-        });
-
-        break;
-
-      case 'greetings':
-        this._cliendId = message.data.clientId;
-        break;
-    }
-  }
-
-  _onError (error) {
-    console.log(`Error '${error.message}'`);
-  }
-
-  play (url) {
-    const data = { command: 'play', data: { url } };
-
-    console.log('Sending WS play command', data);
-
-    this._socket.send(JSON.stringify(data));
-  }
-
-}
-
-class BackgroundPage {
+class Background {
   constructor (wsClient) {
     this._wsClient = wsClient;
     this._bindEvents();
+
+    this._tabsToInject = [];
+    this._activeTabId = null;
   }
 
   _bindEvents () {
@@ -87,7 +12,47 @@ class BackgroundPage {
 
     chrome.runtime.onMessage.addListener(this._onMessage.bind(this));
 
+    chrome.runtime.onConnect.addListener((port) => {
+      console.log('Sync connection came');
+      this._syncPort = port;
+
+      port.onMessage.addListener(this._onPortMessage.bind(this));
+    });
+
     chrome.browserAction.onClicked.addListener(this._browserActionClick.bind(this));
+
+    this._wsClient.on('play', this._onWSPlay.bind(this));
+  }
+
+  _onWSPlay (evt) {
+    let { url } = evt.data;
+
+    chrome.tabs.query({ url }, (results) => {
+      let tabId;
+      new Promise((resolve, reject) => {
+        // if no matching tabs found
+        if (!results.length) {
+          // create one
+          chrome.tabs.create({ url }, (tab) => {
+            resolve(tabId = tab.id);
+          });
+        } else {
+          tabId = results[0].id;
+          // active tab
+          chrome.tabs.update(tabId, { selected: true }, () => {
+            // reload tab to normalize it's state
+            const code = 'window.location.reload();';
+            chrome.tabs.executeScript(tabId, { code }, () => {
+              resolve(tabId);
+            });
+          });
+
+        }
+      }).then((tabId) => {
+        // add tab to inject sync script when tab is ready
+        this._tabsToInject.push(tabId);
+      });
+    });
   }
 
   _onMessage (request, sender, sendResponse) {
@@ -104,16 +69,13 @@ class BackgroundPage {
     console.log(`${request.command} command came`, request.data);
 
     switch (request.command) {
-      /*case 'save':
-        this._getActiveTabUrl().then((url) => {
-          debugger;
-          wsClient.play(url);
-
-          sendResponse({ command: request.command, result: 'ok' });
-        });
-
-        console.groupEnd();
-        return true;*/
+      case 'lifecycle':
+        if (request.data.event === 'window-loaded' && sender.tab) {
+          this._injectSyncScript(sender.tab.id);
+        } else {
+          console.log(`Can't inject script on '${request.data.event}`);
+        }
+        break;
 
       case 'play':
         this._wsClient.play(request.data.url);
@@ -122,6 +84,29 @@ class BackgroundPage {
 
         console.groupEnd();
         return true;
+    }
+  }
+
+  _onPortMessage (request) {
+    console.log('Port message came', request);
+
+    const { command, data } = request;
+
+    switch (command) {
+      case 'ready':
+        this._wsClient.ready();
+
+        break;
+    }
+  }
+
+  _injectSyncScript (tabId) {
+    if (this._tabsToInject.includes(tabId)) {
+      this._tabsToInject = this._tabsToInject.filter(id => id !== tabId);
+
+      chrome.tabs.executeScript(tabId, { file: 'js/sync.js' });
+
+      this._activeTabId = tabId;
     }
   }
 
@@ -134,6 +119,4 @@ class BackgroundPage {
   }
 }
 
-let wsClient = new WSClient();
-
-new BackgroundPage(wsClient);
+export default Background

@@ -19,6 +19,15 @@
       ]
     },
     {
+      "name": "sync",
+      "content": [
+        {
+          "type": "js",
+          "entry": "./content/sync.js"
+        }
+      ]
+    },
+    {
       "name": "popup",
       "content": [
         {

@@ -16,7 +16,8 @@
       ],
       "js": [
         "js/content-buttons.js"
-      ]
+      ],
+      "run_at": "document_end"
     }
   ],
   "browser_action": {
