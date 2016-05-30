@@ -43,7 +43,7 @@
     "test:dev": "karma start test/karma-conf.js --reporters=mocha",
     "watch": "gulp build:css && gulp watch:css",
     "start": "node server/server.js",
-    "archive": "./build/archive.sh"
+    "archive": "./extension/build/archive.sh"
   },
   "dependencies": {
     "eventemitter2": "^1.0.3",

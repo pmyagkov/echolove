@@ -1,6 +1,6 @@
 class Background {
-  constructor (wsClient) {
-    this._wsClient = wsClient;
+  constructor (webSocketClient) {
+    this._webSocketClient = webSocketClient;
     this._bindEvents();
 
     this._tabsToInject = [];
@@ -21,7 +21,31 @@ class Background {
 
     chrome.browserAction.onClicked.addListener(this._browserActionClick.bind(this));
 
-    this._wsClient.on('play', this._onWSPlay.bind(this));
+    this._webSocketClient.on('play', this._onWSPlay.bind(this));
+    this._webSocketClient.on('start', this._onWSStart.bind(this));
+    this._webSocketClient.on('pause', this._onWSPause.bind(this));
+    this._webSocketClient.on('stop', this._onWSStop.bind(this));
+    this._webSocketClient.on('correct', this._onWSCorrect.bind(this));
+  }
+
+  _onWSCorrect (evt) {
+    return this._onWSMessage(evt, 'correct');
+  }
+
+  _onWSStart (evt) {
+    return this._onWSMessage(evt, 'start');
+  }
+
+  _onWSPause (evt) {
+    return this._onWSMessage(evt, 'pause');
+  }
+
+  _onWSStop (evt) {
+    return this._onWSMessage(evt, 'stop');
+  }
+
+  _onWSMessage (evt, command) {
+    this._syncPort.postMessage({ command, data: evt });
   }
 
   _onWSPlay (evt) {
@@ -78,7 +102,7 @@ class Background {
         break;
 
       case 'play':
-        this._wsClient.play(request.data.url);
+        this._webSocketClient.play(request.data.url);
 
         sendResponse({ command: request.command, result: 'ok' });
 
@@ -94,9 +118,12 @@ class Background {
 
     switch (command) {
       case 'ready':
-        this._wsClient.ready();
+        this._webSocketClient.ready();
 
         break;
+
+      case 'time':
+        this._webSocketClient.sendTime(data.time);
     }
   }
 
@@ -111,7 +138,7 @@ class Background {
   }
 
   _browserActionClick (tab) {
-    //this._wsClient.play(tab.url);
+    //this._webSocketClient.play(tab.url);
   }
 
   _showPageAction () {

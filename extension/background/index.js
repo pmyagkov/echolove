@@ -1,6 +1,6 @@
-import WSClient from './wsClient'
+import WebSocketClient from './webSocketClient'
 import Background from './background'
 
-let wsClient = new WSClient();
+let webSocketClient = new WebSocketClient();
 
-new Background(wsClient);
+new Background(webSocketClient);

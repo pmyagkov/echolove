@@ -32,7 +32,7 @@ class Sync {
   }
 
   _scheduleReadinessCheck () {
-    const timeout = 3000;
+    const timeout = 5000;
 
     if (this._readinessCheckTimeout) {
       console.log(`Clearing schedule timeout`);
@@ -43,15 +43,25 @@ class Sync {
     this._readinessCheckTimeout = setTimeout(() => this._checkReadiness(), timeout);
   }
 
-  _stopObserving (options = { dom: true, attr: true }) {
+  _stopObserving (options = { dom: true, attr: true, playback: true }) {
+    console.log('Stop observing...', options);
+
     options.dom && this._domObserver.disconnect();
     options.attr && this._attrObserver.disconnect();
+    options.playback && this._playbackObserver.disconnect();
   }
 
-  _startObserving (options = { dom: true, attr: true }) {
-    console.log('Start observing...');
-    options.dom && this._domObserver.observe(document, { subtree: true, childList: true });
-    options.attr && this._attrObserver.observe(this._playButton, { attributes: true, attributeOldValue: true });
+  _startObserving (options = { dom: true, attr: true, playback: true }) {
+    console.log('Start observing...', options);
+
+    const subtreeOptions = { subtree: true, childList: true };
+    const attrOptions = { attributes: true, attributeOldValue: true };
+
+    options.dom && this._domObserver.observe(document, subtreeOptions);
+    options.attr && this._attrObserver.observe(this._playButton, attrOptions);
+    if (options.playback) {
+      this._playbackObserver.observe(this._findPlaybackContainer(), subtreeOptions);
+    }
   }
 
   _checkReadiness () {
@@ -60,8 +70,8 @@ class Sync {
       console.log('Track is paused. READY! Sending command');
       this._sendCommand('ready');
 
-      // we've found the button, don't need the DOM observer any more
-      this._stopObserving({ dom: true });
+      // stop all observers
+      this._stopObserving();
     } else {
       console.log('Track is in undefined state. NOT READY!', this._playButton.classList);
     }
@@ -71,8 +81,9 @@ class Sync {
     console.log('Init observing...');
     this._domObserver = new MutationObserver((records) => this._onDomMutation(records));
     this._attrObserver = new MutationObserver((records) => this._onAttrMutation(records));
+    this._playbackObserver = new MutationObserver((records) => this._onPlaybackMutation(records));
 
-    this._startObserving();
+    this._startObserving({ dom: true, attr: true });
   }
   
   _isPaused () {
@@ -110,18 +121,16 @@ class Sync {
   }
 
   _play () {
-    const { classList } = this._playButton;
-
     console.log('Attempt to play');
 
     // can't play if buffering
-    if (classList.contains(CLASS.buffering)) {
+    if (this._isBuffering()) {
       console.log(`Can't play, buffering`);
       return false;
     }
 
     // play if paused
-    if (classList.contains(CLASS.paused)) {
+    if (this._isPaused()) {
       console.log(`Track is paused. Clicking play`);
       this._playButton.click();
       return true;
@@ -136,13 +145,20 @@ class Sync {
     return document.querySelector('.playButton');
   }
 
+  _findPlaybackContainer () {
+    return document.querySelector('.playbackTimeline__timePassed');
+  }
+
+  _findPlaybackTime () {
+    return document.querySelectorAll('.playbackTimeline__timePassed span')[1];
+  }
+
   _onDomMutation (records) {
     console.log('DOM mutation', records.map(r => r.addedNodes));
     if (records.every(r => r.addedNodes.length === 0)) {
       console.log('No added nodes. Nothing interesting');
       return;
     }
-
 
     let playButton = this._findPlayButton();
     if (playButton !== this._playButton) {
@@ -163,12 +179,50 @@ class Sync {
     }
   }
 
+  _onPlaybackMutation (records) {
+    const time = this._findPlaybackTime().textContent;
+    console.log('Playback mutation', time);
+
+    this._sendCommand('time', { time });
+  }
+
   _sendCommand (command, data) {
     this._port.postMessage({ command, data });
   }
 
   _onMessage (request) {
+    console.log('Sync port message came', request);
+    switch (request.command) {
+      case 'start':
+        return this._start();
 
+      case 'correct':
+        return this._correct(request.data.diff);
+    }
+  }
+
+  _correct (diff) {
+    if (this._correctTimeout) {
+      return console.log('Skip correction.');
+    }
+
+    console.log(`Correcting on ${diff}sec`);
+
+    this._stopObserving({ playback: true });
+    this._pause();
+
+    this._correctTimeout = setTimeout(() => {
+      console.log(`Correction timeout fired! Starting`);
+      this._correctTimeout = null;
+      this._start();
+    }, diff * 1000);
+  }
+
+  _start () {
+    this._playbackTime = this._findPlaybackTime();
+    this._play();
+
+    this._startObserving({ playback: true });
   }
 }
 

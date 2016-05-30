@@ -2,8 +2,10 @@ import EventEmitter from '../../node_modules/eventemitter2/index'
 
 const SOCKET_URL = "ws://smoothy.puelle.me/ws";
 
-class WSClient {
+class WebSocketClient extends EventEmitter {
   constructor () {
+    super();
+
     this._initConnection();
   }
 
@@ -49,6 +51,12 @@ class WSClient {
 
         break;
 
+      case 'start':
+      case 'pause':
+      case 'stop':
+      case 'correct':
+        this.emit(message.type, message.data);
+
       case 'greetings':
         this._cliendId = message.data.clientId;
         break;
@@ -77,8 +85,24 @@ class WSClient {
     this._socket.send(this._prepareRequest('ready'));
   }
 
+  sendTime (time) {
+    console.log(`Sending WS 'time' command`, time);
+
+    let match = /(\d+):(\d+)(?:(\d+))?/.exec(time);
+    if (!match) {
+      return console.warn(`Can't recognize playback time '${time}'`);
+    }
+
+    const withHours = !!match[3];
+    time = withHours ?
+      3600 * Number(match[1]) + 60 * Number(match[2]) + Number(match[3]) :
+      60 * Number(match[1]) + Number(match[2]);
+
+    console.log(`Translated time '${time}'s`);
+
+    this._socket.send(this._prepareRequest('time', { time }));
+  }
+
 }
 
-Object.assign(WSClient.prototype, EventEmitter.prototype);
-
-export default WSClient
+export default WebSocketClient
