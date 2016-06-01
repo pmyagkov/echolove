@@ -42,7 +42,8 @@ class WebSocketServer {
     client.on('ready', this._onReady.bind(this, client));
     client.on('close', this._onClose.bind(this, client));
     client.on('time', this._onTime.bind(this, client));
-
+    client.on('quit', this._onClose.bind(this, client));
+    client.on('pause', this._onPause.bind(this, client));
   }
 
   _getMinTime () {
@@ -66,7 +67,7 @@ class WebSocketServer {
       let { client, diff } = clientObj;
 
       if (Math.abs(diff) > 1) {
-        client.sendMessage('correct', { diff });
+        client.correct(diff);
       }
     })
   }
@@ -88,12 +89,21 @@ class WebSocketServer {
     }
   }
 
-  _onReady (client) {
+  _onReady () {
     if (_.every(this._clients, (c) => c.inState(ClientState.ready))) {
       console.log('All clients are ready. Sending play!');
 
       this._sendMessageToClient(null, 'start');
     }
+  }
+
+  _onPause () {
+    this._invokeClients(null, 'pause');
+  }
+
+  _invokeClients (id, method, data = {}) {
+    data = _.isArray(data) ? data : [data];
+    this._getClients(id).forEach((client) => _.isFunction(client[method]) && client[method](...data));
   }
 
   _onClose (client) {

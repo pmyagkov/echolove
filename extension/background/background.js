@@ -79,6 +79,25 @@ class Background {
     });
   }
 
+  _onLifecycleMessage (eventName, sender) {
+    if (!sender.tab) {
+      return;
+    }
+
+    switch (eventName) {
+      case 'window-loaded':
+        this._injectSyncScript(sender.tab.id);
+        break;
+
+      case 'window-unloaded':
+        if (sender.tab.id === this._activeTabId) {
+          this._activeTabId = null;
+          // TODO do some client lifecycle work
+          this._webSocketClient.quit();
+        }
+    }
+  }
+
   _onMessage (request, sender, sendResponse) {
     console.group('Background._onMessage');
 
@@ -94,12 +113,7 @@ class Background {
 
     switch (request.command) {
       case 'lifecycle':
-        if (request.data.event === 'window-loaded' && sender.tab) {
-          this._injectSyncScript(sender.tab.id);
-        } else {
-          console.log(`Can't inject script on '${request.data.event}`);
-        }
-        break;
+        return this._onLifecycleMessage(request.data.event, sender);
 
       case 'play':
         this._webSocketClient.play(request.data.url);

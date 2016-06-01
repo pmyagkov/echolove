@@ -4,7 +4,10 @@ const { EventEmitter } = require('events');
 const STATE = {
   init: 'init',
   ready: 'ready',
-  playing: 'playing'
+  playing: 'playing',
+  paused: 'paused',
+  correcting: 'correcting',
+  quitted: 'quitted'
 };
 
 class ExtensionClient extends EventEmitter {
@@ -29,7 +32,15 @@ class ExtensionClient extends EventEmitter {
   }
 
   inState (state) {
-    return this._state === state;
+    state = _.isArray(state) ? state : [state];
+
+    return _.includes(state, this._state);
+  }
+
+  notInState (state) {
+    state = _.isArray(state) ? state : [state];
+
+    return !_.includes(state, this._state);
   }
 
   _bindEvents () {
@@ -41,20 +52,27 @@ class ExtensionClient extends EventEmitter {
     console.log(`Incoming message from client '${this.id}' | ${evt}`);
 
     var message = JSON.parse(evt);
+    // play, ready, time, quit, pause
     switch (message.command) {
-      case 'play':
-      case 'pause':
-        return this.emit(message.command, message.data);
-
       case 'ready':
         this.setState(STATE.ready);
-
-        return this.emit('ready');
+        break;
 
       case 'time':
         this._time = message.data.time;
-        return this.emit('time', message.data);
+        this.setState(STATE.playing);
+        break;
+
+      case 'quit':
+        this.setState(STATE.quitted);
+        break;
+
+      case 'pause':
+        this.setState(STATE.paused);
+        break;
     }
+
+    return this.emit(message.command, message.data);
   }
 
   _onClose (evt) {
@@ -76,6 +94,17 @@ class ExtensionClient extends EventEmitter {
 
   destroy () {
     this.removeAllListeners();
+  }
+
+  correct (diff) {
+    this.setState(STATE.correcting);
+    this.sendMessage('correct', { diff });
+  }
+
+  pause () {
+    if (this.notInState(STATE.paused)) {
+      this.sendMessage('pause');
+    }
   }
 }
 

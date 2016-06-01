@@ -56,6 +56,7 @@ class WebSocketClient extends EventEmitter {
       case 'stop':
       case 'correct':
         this.emit(message.type, message.data);
+        break;
 
       case 'greetings':
         this._cliendId = message.data.clientId;
@@ -101,6 +102,10 @@ class WebSocketClient extends EventEmitter {
     console.log(`Translated time '${time}'s`);
 
     this._socket.send(this._prepareRequest('time', { time }));
+  }
+
+  quit () {
+    this._socket.send(this._prepareRequest('quit'));
   }
 
 }

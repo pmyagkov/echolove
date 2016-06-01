@@ -111,6 +111,7 @@ class PageLifecycleChecked {
   _bindEvents () {
     document.addEventListener('DOMContentLoaded', () => this._sendLifecycleEvent('content-loaded') );
     window.onload = () => this._sendLifecycleEvent('window-loaded');
+    window.onunload = () => this._sendLifecycleEvent('window-unloaded');
   }
 
   _sendLifecycleEvent (event) {
