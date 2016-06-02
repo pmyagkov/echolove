@@ -15,6 +15,7 @@ class WebSocketServer {
       port: port
     });
 
+    /** {ExtensionClient[]} */
     this._clients = [];
     this._clientIndex = 0;
 
@@ -25,16 +26,51 @@ class WebSocketServer {
     this._wss.on('connection', this._onConnection.bind(this));
   }
 
-  _onConnection (ws) {
-    const id = this._clientIndex++;
-    console.log('New connection coming', id);
-
-    let client = new ExtensionClient({ id, ws });
+  _createClient (options) {
+    let client = new ExtensionClient(options);
     this._clients.push(client);
 
     this._bindClientEvents(client);
+  }
 
-    client.sendMessage('greetings', { clientId: id });
+  _onConnection (ws) {
+    console.log(`New connection request came. Send greetings`);
+
+    const tempId = this._clientIndex++;
+    ws.send(JSON.stringify({ type: 'greetings', data: { clientId: tempId }}));
+
+    ws.on('message', function (request) {
+      var message = JSON.parse(request);
+
+      switch (message.command) {
+        case 'greetings':
+          const clientId = message.data.clientId;
+          console.log(`Greetings response came with clientId '${clientId}'`);
+
+          let client;
+          const isNewClient = tempId === clientId;
+          const oldClient = client = _.find(this._clients, { id: clientId });
+
+          if (isNewClient || !oldClient) {
+            isNewClient && console.log(`It's new client, creating it...`);
+            !oldClient && console.log(`Client with this id '${clientId}' not found. Constructing new one...`);
+
+            this._createClient({ id: clientId, ws });
+
+          } else {
+            console.log(`Client found! It's state '${oldClient.getState()}' and ${oldClient.isClosed() ? 'is': 'is NOT'} closed`);
+            if (oldClient.isClosed()) {
+              console.log(`It's in closed state. Activating...`);
+            } else {
+              console.warn(`Client state is abnormal. But activate it anyway...`);
+            }
+
+            oldClient.activate(clientId);
+          }
+
+          break;
+      }
+    }.bind(this));
   }
 
   _bindClientEvents (client) {
@@ -101,14 +137,14 @@ class WebSocketServer {
     this._invokeClients(null, 'pause');
   }
 
+  _onClose (client) {
+    //client.destroy();
+    //this._clients = _.filter(this._clients, (c) => c !== client);
+  }
+
   _invokeClients (id, method, data = {}) {
     data = _.isArray(data) ? data : [data];
     this._getClients(id).forEach((client) => _.isFunction(client[method]) && client[method](...data));
-  }
-
-  _onClose (client) {
-    client.destroy();
-    this._clients = _.filter(this._clients, (c) => c !== client);
   }
 
   _sendMessageToClient (id, type, data) {

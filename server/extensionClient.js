@@ -1,7 +1,12 @@
 const _ = require('lodash');
 const { EventEmitter } = require('events');
 
-const STATE = {
+/**
+ * @readonly
+ * @enum {String}
+ * @typedef ClientState
+ */
+const ClientState = {
   init: 'init',
   ready: 'ready',
   playing: 'playing',
@@ -10,25 +15,32 @@ const STATE = {
   quitted: 'quitted'
 };
 
+/**
+ * @class ExtensionClient
+ */
 class ExtensionClient extends EventEmitter {
   constructor (options = {}) {
     super();
 
     const { id, ws } = options;
 
-    _.extend(this, { id, ws });
-
-    this._state = STATE.init;
+    this._ws = ws;
+    this.id = id;
+    this._state = ClientState.init;
 
     this._bindEvents();
   }
 
   setState (state) {
-    if (!_(STATE).values().includes(state)) {
+    if (!_(ClientState).values().includes(state)) {
       console.warn(`Attempt to set invalid state '${state}' in Client`);
     }
 
     this._state = state;
+  }
+
+  getState () {
+    return this._state;
   }
 
   inState (state) {
@@ -44,31 +56,31 @@ class ExtensionClient extends EventEmitter {
   }
 
   _bindEvents () {
-    this.ws.on('message', this._onMessage.bind(this));
-    this.ws.on('close', this._onClose.bind(this));
+    this._ws.on('message', this._onMessage.bind(this));
+    this._ws.on('close', this._onClose.bind(this));
   }
 
   _onMessage (evt) {
     console.log(`Incoming message from client '${this.id}' | ${evt}`);
 
     var message = JSON.parse(evt);
-    // play, ready, time, quit, pause
+    // greetings, play, ready, time, quit, pause
     switch (message.command) {
       case 'ready':
-        this.setState(STATE.ready);
+        this.setState(ClientState.ready);
         break;
 
       case 'time':
         this._time = message.data.time;
-        this.setState(STATE.playing);
+        this.setState(ClientState.playing);
         break;
 
       case 'quit':
-        this.setState(STATE.quitted);
+        this.setState(ClientState.quitted);
         break;
 
       case 'pause':
-        this.setState(STATE.paused);
+        this.setState(ClientState.paused);
         break;
     }
 
@@ -78,7 +90,13 @@ class ExtensionClient extends EventEmitter {
   _onClose (evt) {
     console.log(`Need to close connection for client '${this.id}'`);
 
+    this._closed = true;
+
     this.emit('close', evt);
+  }
+
+  isClosed () {
+    return this._closed;
   }
 
   get time () {
@@ -89,7 +107,7 @@ class ExtensionClient extends EventEmitter {
     const message = JSON.stringify({ type, data });
 
     console.log(`Sending message from client '${this.id}'`, message);
-    this.ws.send(message);
+    this._ws.send(message);
   }
 
   destroy () {
@@ -97,16 +115,26 @@ class ExtensionClient extends EventEmitter {
   }
 
   correct (diff) {
-    this.setState(STATE.correcting);
+    this.setState(ClientState.correcting);
     this.sendMessage('correct', { diff });
   }
 
   pause () {
-    if (this.notInState(STATE.paused)) {
+    if (this.notInState(ClientState.paused)) {
       this.sendMessage('pause');
     }
+  }
+
+  greetings (id) {
+    this.sendMessage('greetings', { clientId: id });
+  }
+
+  activate (id) {
+    this.id = id;
+
+    this._closed = false;
   }
 }
 
 
-module.exports = { ExtensionClient, ClientState: STATE };
+module.exports = { ExtensionClient, ClientState };

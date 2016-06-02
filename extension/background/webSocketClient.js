@@ -6,6 +6,8 @@ class WebSocketClient extends EventEmitter {
   constructor () {
     super();
 
+    this._clientId = null;
+
     this._initConnection();
   }
 
@@ -23,7 +25,7 @@ class WebSocketClient extends EventEmitter {
   }
 
   _onClose (evt) {
-    if (event.wasClean) {
+    if (evt.wasClean) {
       console.log(`Connection closed`);
     } else {
       console.log(`Connection was interrupted`); // например, "убит" процесс сервера
@@ -41,7 +43,7 @@ class WebSocketClient extends EventEmitter {
       case 'play':
         const { url, initiator } = message.data;
 
-        if (initiator !== this._cliendId) {
+        if (initiator !== this._clientId) {
           console.log(`I'm about to open '${message.data.url}'`);
         } else {
           console.log(`I'm the initiator of this click.`)
@@ -59,7 +61,12 @@ class WebSocketClient extends EventEmitter {
         break;
 
       case 'greetings':
-        this._cliendId = message.data.clientId;
+        if (!this._clientId) {
+          this._clientId = message.data.clientId;
+        }
+
+        this._socket.send(this._prepareRequest('greetings', { clientId: this._clientId }));
+
         break;
     }
   }
@@ -70,7 +77,7 @@ class WebSocketClient extends EventEmitter {
 
   _prepareRequest (command, data = {}) {
     return JSON.stringify({
-      command, data: Object.assign(data, { clientId: this._cliendId })
+      command, data: Object.assign(data, { clientId: this._clientId })
     });
   }
 
