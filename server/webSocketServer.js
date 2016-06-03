@@ -95,7 +95,7 @@ class WebSocketServer {
 
   _onTime () {
     let minTime = this._getMinTime();
-    this._clients.map((c) => {
+    this._getClientsByType(ClientState.playing).map((c) => {
       return {
         client: c, diff: c.time - minTime
       };
@@ -149,6 +149,22 @@ class WebSocketServer {
 
   _sendMessageToClient (id, type, data) {
     this._getClients(id).forEach((client) => client.sendMessage(type, data));
+  }
+
+  // TODO: check workness
+  _getClientsByType({ inState, notInState } = {}) {
+    let clients = this._clients;
+    if (inState) {
+      inState = _.isArray(inState) ? inState : [inState];
+      clients = _.filter(clients, (c) => _.some(inState, (st) => c.inState(st)));
+    }
+
+    if (notInState) {
+      notInState = _.isArray(notInState) ? notInState : [notInState];
+      clients = _.filter(clients, (c) => _.some(notInState, (st) => c.notInState(st)));
+    }
+
+    return clients;
   }
 
   _getClients (id) {
