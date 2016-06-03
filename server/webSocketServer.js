@@ -39,7 +39,10 @@ class WebSocketServer {
     const tempId = this._clientIndex++;
     ws.send(JSON.stringify({ type: 'greetings', data: { clientId: tempId }}));
 
-    ws.on('message', function (request) {
+    var _this = this;
+    ws.on('message', function onGreetings(request) {
+      ws.removeListener('message', onGreetings);
+
       var message = JSON.parse(request);
 
       switch (message.command) {
@@ -49,13 +52,13 @@ class WebSocketServer {
 
           let client;
           const isNewClient = tempId === clientId;
-          const oldClient = client = _.find(this._clients, { id: clientId });
+          const oldClient = client = _.find(_this._clients, { id: clientId });
 
           if (isNewClient || !oldClient) {
             isNewClient && console.log(`It's new client, creating it...`);
             !oldClient && console.log(`Client with this id '${clientId}' not found. Constructing new one...`);
 
-            this._createClient({ id: clientId, ws });
+            _this._createClient({ id: clientId, ws });
 
           } else {
             console.log(`Client found! It's state '${oldClient.getState()}' and ${oldClient.isClosed() ? 'is': 'is NOT'} closed`);
@@ -65,12 +68,12 @@ class WebSocketServer {
               console.warn(`Client state is abnormal. But activate it anyway...`);
             }
 
-            oldClient.activate(clientId);
+            oldClient.activate({ id: clientId, ws });
           }
 
           break;
       }
-    }.bind(this));
+    });
   }
 
   _bindClientEvents (client) {

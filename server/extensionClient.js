@@ -15,6 +15,8 @@ const ClientState = {
   quitted: 'quitted'
 };
 
+const WEB_SOCKET_STATE = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
+
 /**
  * @class ExtensionClient
  */
@@ -22,13 +24,9 @@ class ExtensionClient extends EventEmitter {
   constructor (options = {}) {
     super();
 
-    const { id, ws } = options;
+    this.activate(options);
 
-    this._ws = ws;
-    this.id = id;
     this._state = ClientState.init;
-
-    this._bindEvents();
   }
 
   setState (state) {
@@ -55,13 +53,13 @@ class ExtensionClient extends EventEmitter {
     return !_.includes(state, this._state);
   }
 
-  _bindEvents () {
+  _bindSocketEvents () {
     this._ws.on('message', this._onMessage.bind(this));
     this._ws.on('close', this._onClose.bind(this));
   }
 
   _onMessage (evt) {
-    console.log(`Incoming message from client '${this.id}' | ${evt}`);
+    this.log(`Incoming message from client '${this.id}' | ${evt}`);
 
     var message = JSON.parse(evt);
     // greetings, play, ready, time, quit, pause
@@ -86,9 +84,13 @@ class ExtensionClient extends EventEmitter {
 
     return this.emit(message.command, message.data);
   }
+  
+  _printWebSocketState () {
+    this.log(`WebSocket state is ${this._getWebSocketState()}`);
+  }
 
   _onClose (evt) {
-    console.log(`Need to close connection for client '${this.id}'`);
+    this.log(`Need to close connection for client '${this.id}'`);
 
     this._closed = true;
 
@@ -104,9 +106,11 @@ class ExtensionClient extends EventEmitter {
   }
 
   sendMessage (type, data = {}) {
+    this._printWebSocketState();
+
     const message = JSON.stringify({ type, data });
 
-    console.log(`Sending message from client '${this.id}'`, message);
+    this.log(`Sending message from client '${this.id}'`, message);
     this._ws.send(message);
   }
 
@@ -129,10 +133,25 @@ class ExtensionClient extends EventEmitter {
     this.sendMessage('greetings', { clientId: id });
   }
 
-  activate (id) {
+  _getWebSocketState() {
+    let literalState = WEB_SOCKET_STATE[this._ws.readyState];
+
+    return `${literalState}|${this._ws.readyState}`;
+  }
+
+  activate ({ id, ws } = {}) {
     this.id = id;
+    this._ws = ws;
+
+    this._bindSocketEvents();
+
+    this.log(`Activate client ${id} with readyState ${this._getWebSocketState()}`);
 
     this._closed = false;
+  }
+  
+  log (...args) {
+    return console.log(...[`CLIENT ${this.id}:`, ...args]);
   }
 }
 
