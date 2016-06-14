@@ -21,35 +21,34 @@ class Background {
 
     chrome.browserAction.onClicked.addListener(this._browserActionClick.bind(this));
 
+    this._webSocketClient.on('launch', this._onWSLaunch.bind(this));
     this._webSocketClient.on('play', this._onWSPlay.bind(this));
-    this._webSocketClient.on('start', this._onWSStart.bind(this));
     this._webSocketClient.on('pause', this._onWSPause.bind(this));
     this._webSocketClient.on('stop', this._onWSStop.bind(this));
     this._webSocketClient.on('correct', this._onWSCorrect.bind(this));
   }
 
-  _onWSCorrect (evt) {
-    return this._onWSMessage(evt, 'correct');
+  _onWSCorrect (data) {
+    return this._onWSMessage(data, 'correct');
   }
 
-  _onWSStart (evt) {
-    return this._onWSMessage(evt, 'start');
+  _onWSPlay (data) {
+    return this._onWSMessage(data, 'play');
   }
 
-  _onWSPause (evt) {
-    return this._onWSMessage(evt, 'pause');
+  _onWSPause (data) {
+    return this._onWSMessage(data, 'pause');
   }
 
-  _onWSStop (evt) {
-    return this._onWSMessage(evt, 'stop');
+  _onWSStop (data) {
+    return this._onWSMessage(data, 'stop');
   }
 
-  _onWSMessage (evt, command) {
-    this._syncPort.postMessage({ command, data: evt });
+  _onWSMessage (data, command) {
+    this._syncPort.postMessage({ command, data });
   }
 
-  _onWSPlay (evt) {
-    let { url } = evt.data;
+  _onWSLaunch ({ url }) {
 
     chrome.tabs.query({ url }, (results) => {
       let tabId;
@@ -99,51 +98,40 @@ class Background {
   }
 
   _onMessage (request, sender, sendResponse) {
-    console.group('Background._onMessage');
+    console.log(`Common message '${request.command}' came`, request.data);
 
-    console.log('Received message', sender.tab
-      ? 'from a content script:' + sender.tab.url
-      : 'from the extension'
-    );
+    const { command, data } = request;
 
-    console.log('request', request);
-    console.log('sender', sender);
-
-    console.log(`${request.command} command came`, request.data);
-
-    switch (request.command) {
+    switch (command) {
       case 'lifecycle':
-        return this._onLifecycleMessage(request.data.event, sender);
+        return this._onLifecycleMessage(data.event, sender);
 
-      case 'play':
-        this._webSocketClient.play(request.data.url);
-
-        sendResponse({ command: request.command, result: 'ok' });
-
-        console.groupEnd();
-        return true;
+      case 'launch':
+        return this._webSocketClient.launch(data.url);
     }
   }
 
   _onPortMessage (request) {
-    console.log('Port message came', request);
+    console.log(`Port message '${request.command}' came`, request.data);
 
     const { command, data } = request;
 
     switch (command) {
       case 'ready':
-        this._webSocketClient.ready();
-
+      case 'pause':
+      case 'play':
+        this._webSocketClient[command]();
         break;
 
       case 'time':
         this._webSocketClient.sendTime(data.time);
+        break;
     }
   }
 
   _injectSyncScript (tabId) {
     if (this._tabsToInject.includes(tabId)) {
-      this._tabsToInject = this._tabsToInject.filter(id => id !== tabId);
+      this._tabsToInject = this._tabsToInject.filter((id) => id !== tabId);
 
       chrome.tabs.executeScript(tabId, { file: 'js/sync.js' });
 
@@ -152,7 +140,7 @@ class Background {
   }
 
   _browserActionClick (tab) {
-    //this._webSocketClient.play(tab.url);
+
   }
 
   _showPageAction () {

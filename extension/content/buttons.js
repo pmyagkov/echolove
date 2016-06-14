@@ -16,10 +16,7 @@ class ButtonsController {
 
   _initMutationObserver () {
     this._observer = new MutationObserver((records) =>  {
-      console.log('MO HANDLER', 'started', Array.from(arguments));
-
       if (records.every(r => r.addedNodes.length === 0)) {
-        console.log('NO added nodes. Terminating!');
         return;
       }
 
@@ -45,7 +42,7 @@ class ButtonsController {
 
     let container = elem.querySelector('.sc-button-group');
     const size = this._isListPage ? 'small' : 'medium';
-    container.appendChild(this._createButtonNode({ action: 'play', text: 'Slay', size }));
+    container.appendChild(this._createButtonNode({ action: 'launch', text: 'Slay', size }));
     container.appendChild(this._createButtonNode({ action: 'store', text: 'Store', size }));
   }
 
@@ -80,7 +77,7 @@ class ButtonsController {
     console.log(`Action '${action}' clicked`);
 
     switch (action) {
-      case 'play':
+      case 'launch':
         const url = this._isListPage ?
           container.querySelector('.sound__coverArt').getAttribute('href') :
           window.location.href;

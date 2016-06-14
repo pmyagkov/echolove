@@ -15,7 +15,20 @@ const ClientState = {
   quitted: 'quitted'
 };
 
-const WEB_SOCKET_STATE = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
+/**
+ * @readonly
+ * @enum {String}
+ * @typedef ClientCommands
+ */
+const ClientCommands = {
+  launch: 'launch',
+  play: 'play',
+  pause: 'pause',
+  correct: 'correct',
+  greetings: 'greetings'
+};
+
+const WEB_SOCKET_STATE = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
 
 /**
  * @class ExtensionClient
@@ -31,8 +44,10 @@ class ExtensionClient extends EventEmitter {
 
   setState (state) {
     if (!_(ClientState).values().includes(state)) {
-      console.warn(`Attempt to set invalid state '${state}' in Client`);
+      this.warn(`Attempt to set invalid state '${state}' in Client`);
     }
+
+    this.log(`State set to '${state}'`);
 
     this._state = state;
   }
@@ -59,10 +74,10 @@ class ExtensionClient extends EventEmitter {
   }
 
   _onMessage (evt) {
-    this.log(`Incoming message from client '${this.id}' | ${evt}`);
+    this.log(`Incoming message | ${evt}`);
 
     var message = JSON.parse(evt);
-    // greetings, play, ready, time, quit, pause
+    // launch, play, ready, time, quit, pause
     switch (message.command) {
       case 'ready':
         this.setState(ClientState.ready);
@@ -97,7 +112,7 @@ class ExtensionClient extends EventEmitter {
     this.emit('close', evt);
   }
 
-  isClosed () {
+  get closed () {
     return this._closed;
   }
 
@@ -105,10 +120,16 @@ class ExtensionClient extends EventEmitter {
     return this._time;
   }
 
-  sendMessage (type, data = {}) {
+  _sendMessage (type, data = {}) {
     this._printWebSocketState();
 
     const message = JSON.stringify({ type, data });
+
+    // Socket is closed
+    if (this._ws.readyState === 3) {
+      this.warn(`Socket is closed, can't send the message!`);
+      return;
+    }
 
     this.log(`Sending message from client '${this.id}'`, message);
     this._ws.send(message);
@@ -120,17 +141,27 @@ class ExtensionClient extends EventEmitter {
 
   correct (diff) {
     this.setState(ClientState.correcting);
-    this.sendMessage('correct', { diff });
+    this._sendMessage(ClientCommands.correct, { diff });
   }
 
   pause () {
     if (this.notInState(ClientState.paused)) {
-      this.sendMessage('pause');
+      this._sendMessage(ClientCommands.pause);
     }
   }
 
+  play () {
+    if (this.notInState(ClientState.playing)) {
+      this._sendMessage(ClientCommands.play);
+    }
+  }
+
+  launch ({ url }) {
+    this._sendMessage(ClientCommands.launch, { url });
+  }
+
   greetings (id) {
-    this.sendMessage('greetings', { clientId: id });
+    this._sendMessage(ClientCommands.greetings, { clientId: id });
   }
 
   _getWebSocketState() {
@@ -149,11 +180,15 @@ class ExtensionClient extends EventEmitter {
 
     this._closed = false;
   }
-  
+
   log (...args) {
     return console.log(...[`CLIENT ${this.id}:`, ...args]);
+  }
+
+  warn (...args) {
+    return console.warn(...[`CLIENT ${this.id}:`, ...args]);
   }
 }
 
 
-module.exports = { ExtensionClient, ClientState };
+module.exports = { ExtensionClient, ClientState, ClientCommands };

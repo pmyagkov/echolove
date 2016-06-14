@@ -36,27 +36,17 @@ class WebSocketClient extends EventEmitter {
   }
 
   _onMessage (evt) {
-    console.log(`Data received '${evt.data}'`);
     let message = JSON.parse(evt.data);
 
+    console.log(`Message '${message.type}' received with data`, message.data);
+
     switch (message.type) {
-      case 'play':
-        const { url, initiator } = message.data;
-
-        if (initiator !== this._clientId) {
-          console.log(`I'm about to open '${message.data.url}'`);
-        } else {
-          console.log(`I'm the initiator of this click.`)
-        }
-
-        this.emit('play', { data: { url }});
-
-        break;
-
+      case 'launch':
       case 'start':
       case 'pause':
       case 'stop':
       case 'correct':
+      case 'play':
         this.emit(message.type, message.data);
         break;
 
@@ -81,10 +71,22 @@ class WebSocketClient extends EventEmitter {
     });
   }
 
-  play (url) {
-    console.log(`Sending WS 'play' command`, url);
+  launch (url) {
+    console.log(`Sending WS 'launch' command`, url);
 
-    this._socket.send(this._prepareRequest('play', { url }));
+    this._socket.send(this._prepareRequest('launch', { url }));
+  }
+
+  play () {
+    console.log(`Sending WS 'play' command`);
+
+    this._socket.send(this._prepareRequest('play'));
+  }
+
+  pause () {
+    console.log(`Sending WS 'pause' command`);
+
+    this._socket.send(this._prepareRequest('pause'));
   }
 
   ready () {

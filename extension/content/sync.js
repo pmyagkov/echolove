@@ -74,6 +74,8 @@ class Sync {
       this._stopObserving();
     } else {
       console.log('Track is in undefined state. NOT READY!', this._playButton.classList);
+
+      this._scheduleReadinessCheck();
     }
   }
 
@@ -154,9 +156,7 @@ class Sync {
   }
 
   _onDomMutation (records) {
-    console.log('DOM mutation', records.map(r => r.addedNodes));
     if (records.every(r => r.addedNodes.length === 0)) {
-      console.log('No added nodes. Nothing interesting');
       return;
     }
 
@@ -193,8 +193,11 @@ class Sync {
   _onMessage (request) {
     console.log('Sync port message came', request);
     switch (request.command) {
-      case 'start':
+      case 'play':
         return this._start();
+
+      case 'pause':
+        return this._stop();
 
       case 'correct':
         return this._correct(request.data.diff);
@@ -218,11 +221,50 @@ class Sync {
     }, diff * 1000);
   }
 
+  handleEvent (evt) {
+    const logArgs = [`Play button was clicked!`]
+
+    debugger;
+    if (evt.target !== this._bottomPlayButton && evt.target !== this._playButton) {
+      return;
+    }
+
+    if (this._isPlaying()) {
+      this._sendCommand('pause');
+
+      logArgs.push(`Sending 'pause'`);
+    }
+
+    if (this._isPaused()) {
+      this._sendCommand('play');
+
+      logArgs.push(`Sending 'play'`);
+    }
+
+    console.log(...logArgs);
+  }
+
+  _bindPlayButtonEvents () {
+    if (this._playButtonBound) {
+      return;
+    }
+    this._playButtonBound = true;
+
+    this._bottomPlayButton = document.querySelector('.playControls__playPauseSkip .playControl');
+    document.addEventListener('click', this, true);
+  }
+
   _start () {
-    this._playbackTime = this._findPlaybackTime();
     this._play();
 
+    this._bindPlayButtonEvents();
     this._startObserving({ playback: true });
+  }
+
+  _stop () {
+    this._stopObserving({ playback: true });
+
+    this._pause();
   }
 }
 
