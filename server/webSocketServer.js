@@ -96,8 +96,14 @@ class WebSocketServer {
   }
 
   _getMinTime () {
-    let minTime = this._clients[0].time;
-    this._clients.forEach((client) => {
+    const playingClients = this._getClients({ inState: ClientState.playing });
+
+    if (!playingClients.length) {
+      return null;
+    }
+
+    let minTime = playingClients[0].time;
+    playingClients.forEach((client) => {
       if (client.time < minTime) {
         minTime = client.time;
       }
@@ -108,11 +114,19 @@ class WebSocketServer {
 
   _onTime () {
     let minTime = this._getMinTime();
-    this._getClients({ inState: ClientState.playing }).map((c) => {
+    const playingClients = this._getClients({ inState: ClientState.playing });
+
+    const playingDiffs = playingClients.map((c) => {
       return {
         client: c, diff: c.time - minTime
       };
-    }).forEach((clientObj) => {
+    });
+
+    let diffString = '';
+    playingDiffs.forEach((d) => diffString += `${d.client.id}|${d.diff} `);
+    this.log(`MIN time: ${minTime}s; DIFFS (${playingClients.length}): ${diffString}`);
+
+    playingDiffs.forEach((clientObj) => {
       let { client, diff } = clientObj;
 
       if (Math.abs(diff) > 1) {

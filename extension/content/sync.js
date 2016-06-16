@@ -8,9 +8,9 @@ const CLASS = {
 
 class Sync {
   constructor () {
-    this._init();
-
     this._initBackgroundConnection();
+
+    this._init();
   }
 
   _initBackgroundConnection () {
@@ -25,10 +25,17 @@ class Sync {
       console.warn('Play button is not presented on the page');
       return;
     }
-    
+
     this._initMutationObserver();
 
-    this._scheduleReadinessCheck();
+    if (this._isPlaying()) {
+      console.log('Track is already playing! Stopping it.');
+      this._pause();
+      this._checkReadiness()
+    } else {
+      this._startObserving({ dom: true, attr: true });
+      this._scheduleReadinessCheck();
+    }
   }
 
   _scheduleReadinessCheck () {
@@ -84,8 +91,6 @@ class Sync {
     this._domObserver = new MutationObserver((records) => this._onDomMutation(records));
     this._attrObserver = new MutationObserver((records) => this._onAttrMutation(records));
     this._playbackObserver = new MutationObserver((records) => this._onPlaybackMutation(records));
-
-    this._startObserving({ dom: true, attr: true });
   }
   
   _isPaused () {
@@ -114,33 +119,39 @@ class Sync {
     const isPlaying = this._isPlaying();
     const isBuffering = this._isBuffering();
     
-    console.log('Attempt to pause', `Playing '${isPlaying}', buffering '${isBuffering}'`);
+    console.log(`PAUSE: playing '${isPlaying}', buffering '${isBuffering}'`);
 
     if (!this._isPaused()) {
-      console.log(`Track is playing. Click pause`);
-      this._playButton.click();
+      console.log(`PAUSE: Track is playing. Click pause`);
+      this._clickPlayButton(true);
+    } else {
+      console.warn(`PAUSE: Track is NOT playing. Do nothing!`);
     }
   }
 
   _play () {
-    console.log('Attempt to play');
-
-    // can't play if buffering
     if (this._isBuffering()) {
-      console.log(`Can't play, buffering`);
-      return false;
+      console.log(`PLAY: buffering, but click anyway!`);
+      return true;
     }
 
     // play if paused
     if (this._isPaused()) {
-      console.log(`Track is paused. Clicking play`);
-      this._playButton.click();
+      console.log(`PLAY: Track is paused. Clicking play`);
+      this._clickPlayButton(true);
       return true;
     }
 
-    console.log(`Track is playing. Can't play it`);
+    console.warn(`PLAY: Track is playing. Can't play it`);
 
     return false
+  }
+
+  _clickPlayButton (blockClickHandler = false) {
+    this._clickHandlerBlocked = blockClickHandler;
+    this._playButton.click();
+
+    this._clickHandlerBlocked = false;
   }
 
   _findPlayButton () {
@@ -222,10 +233,11 @@ class Sync {
   }
 
   handleEvent (evt) {
-    const logArgs = [`Play button was clicked!`]
+    const logArgs = [`HANDLE EVENT:`];
 
-    debugger;
-    if (evt.target !== this._bottomPlayButton && evt.target !== this._playButton) {
+    if (evt.target !== this._bottomPlayButton && evt.target !== this._playButton ||
+      this._clickHandlerBlocked) {
+      console.log(logArgs.concat('Click handler was blocked!'));
       return;
     }
 

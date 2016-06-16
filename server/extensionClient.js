@@ -42,12 +42,12 @@ class ExtensionClient extends EventEmitter {
     this._state = ClientState.init;
   }
 
-  setState (state) {
+  setState (state, { log } = { log: true }) {
     if (!_(ClientState).values().includes(state)) {
       this.warn(`Attempt to set invalid state '${state}' in Client`);
     }
 
-    this.log(`State set to '${state}'`);
+    log && this.log(`State set to '${state}'`);
 
     this._state = state;
   }
@@ -85,7 +85,8 @@ class ExtensionClient extends EventEmitter {
 
       case 'time':
         this._time = message.data.time;
-        this.setState(ClientState.playing);
+        this.log(`Playing: ${this.time}s`);
+        this.setState(ClientState.playing, { log: false });
         break;
 
       case 'quit':
