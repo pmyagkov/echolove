@@ -40,48 +40,50 @@ class WebSocketServer {
   _onConnection (ws) {
     this.log(`New connection request came. Send greetings`);
 
-    const tempId = this._clientIndex++;
-    ws.send(JSON.stringify({ type: ClientCommands.greetings, data: { clientId: tempId }}));
+    setTimeout(() => {
+      const tempId = this._clientIndex++;
+      ws.send(JSON.stringify({ type: ClientCommands.greetings, data: { clientId: tempId }}));
 
-    var _this = this;
-    ws.on('message', function onGreetings(request) {
-      ws.removeListener('message', onGreetings);
+      var _this = this;
+      ws.on('message', function onGreetings(request) {
+        ws.removeListener('message', onGreetings);
 
-      var message = JSON.parse(request);
+        var message = JSON.parse(request);
 
-      switch (message.command) {
-        case ClientCommands.greetings:
-          const clientId = message.data.clientId;
-          _this.log(`Greetings response came with clientId '${clientId}'`);
+        switch (message.command) {
+          case ClientCommands.greetings:
+            const clientId = message.data.clientId;
+            _this.log(`Greetings response came with clientId '${clientId}'`);
 
-          let client;
-          const isNewClient = tempId === clientId;
-          const oldClient = client = _.find(_this._clients, { id: clientId });
+            let client;
+            const isNewClient = tempId === clientId;
+            const oldClient = client = _.find(_this._clients, { id: clientId });
 
-          if (isNewClient || !oldClient) {
-            isNewClient && _this.log(`It's new client, creating it...`);
-            !oldClient && _this.log(`Client with this id '${clientId}' not found. Constructing new one...`);
+            if (isNewClient || !oldClient) {
+              isNewClient && _this.log(`It's new client, creating it...`);
+              !oldClient && _this.log(`Client with this id '${clientId}' not found. Constructing new one...`);
 
-            _this._createClient({ id: clientId, ws });
+              _this._createClient({ id: clientId, ws });
 
-          } else {
-            _this.log(`Client found! It's state '${oldClient.getState()}' and ${oldClient.closed ? 'is': 'is NOT'} closed`);
-            if (oldClient.closed) {
-              _this.log(`It's in closed state. Activating...`);
             } else {
-              _this.warn(`Client state is abnormal. But activate it anyway...`);
+              _this.log(`Client found! It's state '${oldClient.getState()}' and ${oldClient.closed ? 'is': 'is NOT'} closed`);
+              if (oldClient.closed) {
+                _this.log(`It's in closed state. Activating...`);
+              } else {
+                _this.warn(`Client state is abnormal. But activate it anyway...`);
+              }
+
+              oldClient.activate({ id: clientId, ws });
             }
 
-            oldClient.activate({ id: clientId, ws });
-          }
+            if (this._clientIndex <= clientId) {
+              this._clientIndex = clientId + 1;
+            }
 
-          if (this._clientIndex <= clientId) {
-            this._clientIndex = clientId + 1;
-          }
-
-          break;
-      }
-    });
+            break;
+        }
+      });
+    }, 0);
   }
 
   _bindClientEvents (client) {
